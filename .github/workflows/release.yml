@@ -6,7 +6,7 @@ on:
       - v*
 
 env:
-  REGISTRY_IMAGE: ghcr.io/h3rmt/tor-exporter
+  REGISTRY_IMAGE: ghcr.io/h3rmt/borg-prometheus-exporter
 
 permissions:
   contents: read
@@ -93,7 +93,7 @@ jobs:
         run: |
           docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf '${{ env.REGISTRY_IMAGE }}@sha256:%s ' *)
-      
+
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env.REGISTRY_IMAGE }}:${{ steps.meta.outputs.version }}
