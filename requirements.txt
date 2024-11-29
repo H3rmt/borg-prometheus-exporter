@@ -1,0 +1,7 @@
+borgapi==0.6.1
+prometheus_client==0.21.0
+llfuse==1.5.1
+msgpack==1.0.5
+packaging==24.2
+prometheus_client==0.21.0
+python-dotenv==1.0.1
