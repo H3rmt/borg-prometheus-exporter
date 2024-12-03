@@ -24,6 +24,9 @@ The passprahrase used to decrypt to the Borg repo is read from the environment v
 
 **IMPORTANT**: If the passhprase is stored in a file the path must be absolute
 
+Loglevel and format are controlled via `EXPORTER_LOGLEVEL` and `EXPORTER_LOGFORMAT` and set to `info` and
+`%(levelname)-6s|%(message)s` by default
+
 ## Exported metrics
 
 | Name                           | Description                                |

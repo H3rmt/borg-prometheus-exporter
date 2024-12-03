@@ -6,8 +6,6 @@ import argparse
 import logging
 import os
 
-logger = logging.getLogger(__name__)
-
 
 def metric(name: str, docs: str, labels, value):
 	last_modified = Metric(name, docs, labels=labels.keys())
@@ -16,30 +14,37 @@ def metric(name: str, docs: str, labels, value):
 
 
 class Collector:
-	def __init__(self, repo_config: str):
+	def __init__(self, logger: logging.Logger, repo_config: str):
+		self.logger = logger
 		self.repo_configs = {}
 		repo_configs = repo_config.strip().split(',')
+		self.logger.debug("repo_configs: %s", repo_configs)
 		for config in repo_configs:
 			data = config.split('=')
 			if len(data) < 2:
 				continue
 			passph = data[1].strip()
+			name = data[0].strip()
+			self.logger.debug("name: %s, passph: %s", name, passph)
 			if passph.startswith('/'):
 				with os.open(passph, 'r') as f:
-					self.repo_configs[data[0].strip()] = f.read()
+					self.repo_configs[name] = f.read()
 			else:
-				self.repo_configs[data[0].strip()] = passph
-		logger.info("repo_configs: %s", self.repo_configs.keys())
+				self.repo_configs[name] = passph
+		self.logger.info("repo_configs: %s", self.repo_configs.keys())
 
 	def collect(self):
 		for repo, passprahrase in self.repo_configs.items():
 			api = None
 			try:
-				api = borgapi.BorgAPI(defaults={}, options={})
+				# print([logging.getLogger(name) for name in logging.root.manager.loggerDict])
+				api = borgapi.BorgAPI(defaults={}, options={}, log_level="critical", log_json=True)
+				# print([logging.getLogger(name) for name in logging.root.manager.loggerDict])
+				# logging.getLogger("borg.repository").setLevel(logging.CRITICAL)  # deactivate BorgAPI logger
 				api.set_environ(dictionary={"BORG_PASSPHRASE": passprahrase})
 				api.set_environ(dictionary={"BORG_RELOCATED_REPO_ACCESS_IS_OK": 1})
 			except Exception as e:
-				logger.error("Borg Repo not found or Passphrase invalid: %s", e)
+				self.logger.error("Borg Repo not found or Passphrase invalid: %s", e)
 
 			try:
 				info = api.info(repo, json=True)
@@ -52,7 +57,7 @@ class Collector:
 				yield metric("deduplicated_size", 'Deduplicated Size of Backup in Bytes', {"repo": repo},
 							 info["cache"]["stats"]["unique_csize"])
 			except Exception as e:
-				logger.debug("Error loading infos %s", e)
+				self.logger.error("Error loading infos: %s", e)
 
 			last = None
 			try:
@@ -62,9 +67,11 @@ class Collector:
 				archives.sort(key=lambda repo: datetime.datetime.fromisoformat(repo["time"]))
 				last = archives[-1]
 			except Exception as e:
-				logger.debug("Error listing backups %s", e)
+				self.logger.error("Error listing backups: %s", e)
 
 			try:
+				if last is None:
+					raise Exception("No last Backup found")
 				lastinfo = api.info(f"{repo}::{last["name"]}", json=True)
 				last_stats = lastinfo["archives"][0]["stats"]
 				yield metric("last_archive_compressed_size", 'Compressed Size of last Archive in Bytes', {"repo": repo},
@@ -77,15 +84,17 @@ class Collector:
 				yield metric("last_archive_file_count", 'Total amount of files in last Archive', {"repo": repo},
 							 int(last_stats["nfiles"]))
 			except Exception as e:
-				logger.debug("Error loading last backup %s", e)
+				self.logger.error("Error loading last backup: %s", e)
 
 
 if __name__ == '__main__':
-	logger.setLevel(logging.DEBUG)
-	ch = logging.StreamHandler()
-	ch.setLevel(os.environ.get('LOGLEVEL', 'INFO').upper())
-	ch.setFormatter(logging.Formatter('%(levelname)s:%(message)s'))
-	logger.addHandler(ch)
+	logger = logging.getLogger("borg-prometheus-exporter")
+	logger.setLevel(os.environ.get('EXPORTER_LOGLEVEL', 'INFO').upper())
+	logger.propagate = False  # prevent borg logger from logging everythin twice
+	sh = logging.StreamHandler()
+	sh.setFormatter(logging.Formatter(os.environ.get('EXPORTER_LOGFORMAT', '%(levelname)-6s|%(message)s')))
+	logger.addHandler(sh)
+
 	parser = argparse.ArgumentParser()
 
 	parser.add_argument("-p", "--listen-port", help="Listen on this port", type=int, default=9099)
@@ -97,7 +106,7 @@ if __name__ == '__main__':
 		logger.error("REPO_CONFIG Env missing")
 		exit(1)
 
-	REGISTRY.register(Collector(os.environ.get('REPO_CONFIG')))
+	REGISTRY.register(Collector(logger, os.environ.get('REPO_CONFIG')))
 
 	server, thread = start_http_server(args.listen_port, addr=args.bind_addr)
 	logger.info("Starting on %s:%s" % (server.server_address, server.server_port))
