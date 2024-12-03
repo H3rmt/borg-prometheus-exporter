@@ -21,7 +21,12 @@ class Collector:
 		repo_configs = repo_config.split(',')
 		for config in repo_configs:
 			data = config.split('=')
-			self.repo_configs[data[0].strip()] = data[1].strip()
+			passph = data[1].strip()
+			if passph.startswith('/'):
+				with os.open(passph, 'r') as f:
+					self.repo_configs[data[0].strip()] = f.read()
+			else:
+				self.repo_configs[data[0].strip()] = passph
 		logger.info("repo_configs: %s", self.repo_configs.keys())
 
 	def collect(self):
@@ -37,13 +42,13 @@ class Collector:
 			try:
 				info = api.info(repo, json=True)
 				yield metric("last_modified", 'Last modified Timestamp in seconds', {"repo": repo},
-								 datetime.datetime.fromisoformat(info["repository"]["last_modified"]).strftime("%s"))
+							 datetime.datetime.fromisoformat(info["repository"]["last_modified"]).strftime("%s"))
 				yield metric("total_size", 'Total Size of Backup in Bytes', {"repo": repo},
-								 info["cache"]["stats"]["total_csize"])
+							 info["cache"]["stats"]["total_csize"])
 				yield metric("original_size", 'Original Size of Backup in Bytes', {"repo": repo},
-								 info["cache"]["stats"]["total_size"])
+							 info["cache"]["stats"]["total_size"])
 				yield metric("deduplicated_size", 'Deduplicated Size of Backup in Bytes', {"repo": repo},
-								 info["cache"]["stats"]["unique_csize"])
+							 info["cache"]["stats"]["unique_csize"])
 			except Exception as e:
 				logger.debug("Error loading infos %s", e)
 
@@ -61,14 +66,14 @@ class Collector:
 				lastinfo = api.info(f"{repo}::{last["name"]}", json=True)
 				last_stats = lastinfo["archives"][0]["stats"]
 				yield metric("last_archive_compressed_size", 'Compressed Size of last Archive in Bytes', {"repo": repo},
-								 int(last_stats["compressed_size"]))
+							 int(last_stats["compressed_size"]))
 				yield metric("last_archive_deduplicated_size", 'Deduplicated Size of last Archive in Bytes',
-								 {"repo": repo},
-								 int(last_stats["deduplicated_size"]))
+							 {"repo": repo},
+							 int(last_stats["deduplicated_size"]))
 				yield metric("last_archive_original_size", 'Original Size of last Archive in Bytes', {"repo": repo},
-								 int(last_stats["original_size"]))
+							 int(last_stats["original_size"]))
 				yield metric("last_archive_file_count", 'Total amount of files in last Archive', {"repo": repo},
-								 int(last_stats["nfiles"]))
+							 int(last_stats["nfiles"]))
 			except Exception as e:
 				logger.debug("Error loading last backup %s", e)
 

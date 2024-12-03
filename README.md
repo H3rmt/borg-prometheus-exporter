@@ -19,8 +19,10 @@ options:
                         Bind this address
 ```
 
-The passprahrase used to decrypt to the Borg repo is read from the environment variable REPO_CONFIG (format:
-``path/to/repo=febo8ih3fo2qdnwaof9hn-a9h-fa3, /repo=fbei1o2nfe0823nf02380823fn3``).
+The passprahrase used to decrypt to the Borg repo is read from the environment variable `REPO_CONFIG` (format:
+``path/to/repo=febo8ih3fo2qdnwaof9hn-a9h-fa3, /repo=fbei1o2nfe0823nf02380823fn3, /repo2=/run/agenix/secret_passphrase``).
+
+**IMPORTANT**: If the passhprase is stored in a file the path must be absolute
 
 ## Exported metrics
 
