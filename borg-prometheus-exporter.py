@@ -18,9 +18,11 @@ def metric(name: str, docs: str, labels, value):
 class Collector:
 	def __init__(self, repo_config: str):
 		self.repo_configs = {}
-		repo_configs = repo_config.split(',')
+		repo_configs = repo_config.strip().split(',')
 		for config in repo_configs:
 			data = config.split('=')
+			if len(data) < 2:
+				continue
 			passph = data[1].strip()
 			if passph.startswith('/'):
 				with os.open(passph, 'r') as f:
