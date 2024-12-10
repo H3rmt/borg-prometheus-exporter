@@ -2,6 +2,7 @@ import borgapi
 import datetime
 from prometheus_client import start_http_server
 from prometheus_client.core import GaugeMetricFamily as Metric, REGISTRY
+from prometheus_client.registry import Collector
 import argparse
 import logging
 import os
@@ -13,9 +14,9 @@ def metric(name: str, docs: str, labels, value):
 	return last_modified
 
 
-class Collector:
-	def __init__(self, logger: logging.Logger, repo_config: str):
-		self.logger = logger
+class BorgCollector(Collector):
+	def __init__(self, log: logging.Logger, repo_config: str):
+		self.logger = log
 		self.repo_configs = {}
 		repo_configs = repo_config.strip().split(',')
 		self.logger.debug("repo_configs: %s", repo_configs)
@@ -64,7 +65,7 @@ class Collector:
 				list_info = api.list(repo, json=True)
 				archives = list_info["archives"]
 				yield metric("archive_count", 'Total amount of backups', {"repo": repo}, len(archives))
-				archives.sort(key=lambda repo: datetime.datetime.fromisoformat(repo["time"]))
+				archives.sort(key=lambda r: datetime.datetime.fromisoformat(r["time"]))
 				last = archives[-1]
 			except Exception as e:
 				self.logger.error("Error listing backups: %s", e)
@@ -106,7 +107,7 @@ if __name__ == '__main__':
 		logger.error("REPO_CONFIG Env missing")
 		exit(1)
 
-	REGISTRY.register(Collector(logger, os.environ.get('REPO_CONFIG')))
+	REGISTRY.register(BorgCollector(logger, os.environ.get('REPO_CONFIG')))
 
 	server, thread = start_http_server(args.listen_port, addr=args.bind_addr)
 	logger.info("Starting on %s:%s" % (server.server_address, server.server_port))
