@@ -1,7 +1,7 @@
 borgapi==0.6.1
-prometheus_client==0.21.0
+prometheus_client==0.22.1
 llfuse==1.5.1
 msgpack==1.0.5
 packaging==25.0
-prometheus_client==0.21.0
+prometheus_client==0.22.1
 python-dotenv==1.0.1
