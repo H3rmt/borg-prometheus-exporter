@@ -1,4 +1,4 @@
-borgapi==0.6.1
+borgapi==0.7.0
 prometheus_client==0.21.0
 llfuse==1.5.1
 msgpack==1.0.5
